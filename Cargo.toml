@@ -1,0 +1,11 @@
+[package]
+name = "srec-rs"
+version = "0.1.0"
+edition = "2024"
+authors = ["tuemb <nvtu96@gmail.com>"]
+description   = "srec crate in Rust"
+license       = "MIT OR Apache-2.0"
+repository    = "https://github.com/TuEmb/srec-rs.git"
+
+[dependencies]
+thiserror = "2.0.12"
