@@ -1,6 +1,6 @@
 [package]
 name = "srec-rs"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 authors = ["tuemb <nvtu96@gmail.com>"]
 description   = "srec crate in Rust"

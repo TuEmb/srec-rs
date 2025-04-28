@@ -15,7 +15,6 @@ pub struct Data<T> {
     pub data: Vec<u8>,
 }
 
-
 #[derive(Debug, Clone)]
 pub enum Address {
     /// 16-bit address
@@ -55,13 +54,13 @@ impl Record {
     pub fn parse_from_str(record: &str) -> Result<Self, Error> {
         let record = record.trim();
         if !record.starts_with('S') || record.len() < 2 {
-            return Err(Error::DataLengthError)
+            return Err(Error::DataLengthError);
         }
 
         let rec_type = &record[1..2];
         let bytes = (2..record.len())
             .step_by(2)
-            .map(|i| u8::from_str_radix(&record[i..i+2], 16).unwrap_or(0))
+            .map(|i| u8::from_str_radix(&record[i..i + 2], 16).unwrap_or(0))
             .collect::<Vec<_>>();
 
         // Checksum calculation (last byte is checksum)
@@ -73,36 +72,31 @@ impl Record {
         match rec_type {
             "0" => {
                 // S0: Header, address is 2 bytes, data is rest minus checksum
-                let data = &bytes[2..bytes.len()-1];
+                let data = &bytes[2..bytes.len() - 1];
                 let text = String::from_utf8_lossy(data).to_string();
                 Ok(Record::S0(text))
             }
             "1" => {
                 // S1: 16-bit address + data
                 let address = ((bytes[1] as u16) << 8) | (bytes[2] as u16);
-                let data = bytes[3..bytes.len()-1].to_vec();
-                Ok(Record::S1(Data {
-                    address,
-                    data,
-                }))
+                let data = bytes[3..bytes.len() - 1].to_vec();
+                Ok(Record::S1(Data { address, data }))
             }
             "2" => {
                 // S2: 24-bit address + data
-                let address = ((bytes[1] as u32) << 16) | ((bytes[2] as u32) << 8) | (bytes[3] as u32);
-                let data = bytes[4..bytes.len()-1].to_vec();
-                Ok(Record::S2(Data {
-                    address,
-                    data,
-                }))
+                let address =
+                    ((bytes[1] as u32) << 16) | ((bytes[2] as u32) << 8) | (bytes[3] as u32);
+                let data = bytes[4..bytes.len() - 1].to_vec();
+                Ok(Record::S2(Data { address, data }))
             }
             "3" => {
                 // S3: 32-bit address + data
-                let address = ((bytes[1] as u32) << 24) | ((bytes[2] as u32) << 16) | ((bytes[3] as u32) << 8) | (bytes[4] as u32);
-                let data = bytes[5..bytes.len()-1].to_vec();
-                Ok(Record::S3(Data {
-                    address,
-                    data,
-                }))
+                let address = ((bytes[1] as u32) << 24)
+                    | ((bytes[2] as u32) << 16)
+                    | ((bytes[3] as u32) << 8)
+                    | (bytes[4] as u32);
+                let data = bytes[5..bytes.len() - 1].to_vec();
+                Ok(Record::S3(Data { address, data }))
             }
             "4" => Ok(Record::S4),
             "5" => {
@@ -112,17 +106,22 @@ impl Record {
             }
             "6" => {
                 // S6: 24-bit count
-                let count = ((bytes[1] as u32) << 16) | ((bytes[2] as u32) << 8) | (bytes[3] as u32);
+                let count =
+                    ((bytes[1] as u32) << 16) | ((bytes[2] as u32) << 8) | (bytes[3] as u32);
                 Ok(Record::S6(count))
             }
             "7" => {
                 // S7: 32-bit start address
-                let address = ((bytes[1] as u32) << 24) | ((bytes[2] as u32) << 16) | ((bytes[3] as u32) << 8) | (bytes[4] as u32);
+                let address = ((bytes[1] as u32) << 24)
+                    | ((bytes[2] as u32) << 16)
+                    | ((bytes[3] as u32) << 8)
+                    | (bytes[4] as u32);
                 Ok(Record::S7(address))
             }
             "8" => {
                 // S8: 24-bit start address
-                let address = ((bytes[1] as u32) << 16) | ((bytes[2] as u32) << 8) | (bytes[3] as u32);
+                let address =
+                    ((bytes[1] as u32) << 16) | ((bytes[2] as u32) << 8) | (bytes[3] as u32);
                 Ok(Record::S8(address))
             }
             "9" => {
@@ -150,7 +149,10 @@ mod tests {
                 assert_eq!(data.address, 0x7AF0);
                 assert_eq!(
                     data.data,
-                    vec![0x00, 0xA0, 0xA0, 0xD0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+                    vec![
+                        0x00, 0xA0, 0xA0, 0xD0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                        0x00, 0x00, 0x00, 0x00
+                    ]
                 );
             }
             _ => panic!("Expected S1 record"),
@@ -168,11 +170,13 @@ mod tests {
                 assert_eq!(data.address, 0x010480);
                 assert_eq!(
                     data.data,
-                    vec![0xC0, 0x46, 0x71, 0xB6, 0x04, 0x20, 0x71, 0x46, 0x01, 0x42, 0x18, 0xD0, 0xEF, 0xF3, 0x09, 0x83]
+                    vec![
+                        0xC0, 0x46, 0x71, 0xB6, 0x04, 0x20, 0x71, 0x46, 0x01, 0x42, 0x18, 0xD0,
+                        0xEF, 0xF3, 0x09, 0x83
+                    ]
                 );
             }
             _ => panic!("Expected S1 record"),
         }
     }
 }
-

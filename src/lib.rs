@@ -1,8 +1,8 @@
 //! SREC file parsing and memory layout utilities.
 
-use std::{fs::File, io::BufReader, io::BufRead};
+use std::{fs::File, io::BufRead, io::BufReader};
 mod record;
-pub use record::{Address, Record, Data};
+pub use record::{Address, Data, Record};
 
 /// Errors which may occur during reading or parsing SREC files.
 #[derive(Debug, thiserror::Error)]
@@ -12,7 +12,9 @@ pub enum Error {
     #[error("Data length was not as expected")]
     DataLengthError,
     #[error("Character was unexpected")]
-    UnexpectedCharacter
+    UnexpectedCharacter,
+    #[error("Can't open srec file")]
+    SrecFileError,
 }
 
 /// Represents a parsed SREC file and its memory layout.
@@ -57,7 +59,7 @@ impl<const MAX: u32> SRecord<MAX> {
     ///
     /// - Merges adjacent/overlapping regions up to MAX bytes per region.
     /// - Supports S1, S2, S3 records for data.
-    pub fn from_srec(f: File) -> Self {
+    pub fn from_srec(f: File) -> Result<Self, Error> {
         let reader = BufReader::new(f);
         let mut records = Vec::new();
         let mut regions = Vec::new();
@@ -66,24 +68,25 @@ impl<const MAX: u32> SRecord<MAX> {
         // Parse each line and collect regions and data
         for line in reader.lines() {
             if let Ok(line) = line {
-                if let Ok(rec) = record::Record::parse_from_str(&line) {
-                    match &rec {
-                        record::Record::S1(d) => {
-                            regions.push((d.address as u32, d.data.len()));
-                            data.extend(&d.data);
-                        }
-                        record::Record::S2(d) => {
-                            regions.push((d.address as u32, d.data.len()));
-                            data.extend(&d.data);
-                        }
-                        record::Record::S3(d) => {
-                            regions.push((d.address as u32, d.data.len()));
-                            data.extend(&d.data);
-                        }
-                        _ => {}
+                let rec = record::Record::parse_from_str(&line)?;
+                match &rec {
+                    record::Record::S1(d) => {
+                        regions.push((d.address as u32, d.data.len()));
+                        data.extend(&d.data);
                     }
-                    records.push(rec);
+                    record::Record::S2(d) => {
+                        regions.push((d.address, d.data.len()));
+                        data.extend(&d.data);
+                    }
+                    record::Record::S3(d) => {
+                        regions.push((d.address, d.data.len()));
+                        data.extend(&d.data);
+                    }
+                    _ => {}
                 }
+                records.push(rec);
+            } else {
+                return Err(Error::SrecFileError);
             }
         }
 
@@ -128,12 +131,12 @@ impl<const MAX: u32> SRecord<MAX> {
 
         let data_length = data.len();
 
-        Self {
+        Ok(Self {
             record: records,
             data_memory_layout: final_regions,
             data,
             data_length,
-        }
+        })
     }
 }
 
@@ -146,13 +149,16 @@ mod tests {
     #[test]
     fn test_from_srec_file() {
         let file = File::open("test_data/test.srec").expect("Failed to open test.srec");
-        let srec = SRecord::<0x8000>::from_srec(file);
+        let srec = SRecord::<0x8000>::from_srec(file).unwrap();
 
         // Check that records were parsed
         assert!(!srec.record.is_empty(), "No records parsed");
 
         // Check that data_memory_layout is not empty and contains reasonable regions
-        assert!(!srec.data_memory_layout.is_empty(), "No memory layout regions found");
+        assert!(
+            !srec.data_memory_layout.is_empty(),
+            "No memory layout regions found"
+        );
 
         // Check that data and data_length are consistent
         assert_eq!(srec.data.len(), srec.data_length);
