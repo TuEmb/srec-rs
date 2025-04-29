@@ -25,6 +25,24 @@ pub enum Address {
     Address32(Address32),
 }
 
+impl Address {
+    pub fn to_le_bytes(self) -> Vec<u8> {
+        match self {
+            Address::Address16(addr) => addr.to_le_bytes().to_vec(),
+            Address::Address24(addr) => addr.to_le_bytes().to_vec(),
+            Address::Address32(addr) => addr.to_le_bytes().to_vec(),
+        }
+    }
+
+    pub fn to_be_bytes(self) -> Vec<u8> {
+        match self {
+            Address::Address16(addr) => addr.to_be_bytes().to_vec(),
+            Address::Address24(addr) => addr.to_be_bytes().to_vec(),
+            Address::Address32(addr) => addr.to_be_bytes().to_vec(),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum Record {
     /// Header
@@ -137,6 +155,30 @@ impl Record {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_address_to_le_bytes() {
+        let addr16 = Address::Address16(0x1234);
+        assert_eq!(addr16.to_le_bytes(), 0x1234u16.to_le_bytes().to_vec());
+
+        let addr24 = Address::Address24(0x123456);
+        assert_eq!(addr24.to_le_bytes(), 0x123456u32.to_le_bytes().to_vec());
+
+        let addr32 = Address::Address32(0x12345678);
+        assert_eq!(addr32.to_le_bytes(), 0x12345678u32.to_le_bytes().to_vec());
+    }
+
+    #[test]
+    fn test_address_to_be_bytes() {
+        let addr16 = Address::Address16(0x1234);
+        assert_eq!(addr16.to_be_bytes(), 0x1234u16.to_be_bytes().to_vec());
+
+        let addr24 = Address::Address24(0x123456);
+        assert_eq!(addr24.to_be_bytes(), 0x123456u32.to_be_bytes().to_vec());
+
+        let addr32 = Address::Address32(0x12345678);
+        assert_eq!(addr32.to_be_bytes(), 0x12345678u32.to_be_bytes().to_vec());
+    }
 
     #[test]
     fn test_parse_s1_record() {
