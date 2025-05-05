@@ -22,7 +22,7 @@ pub struct SRecord<const MAX: u32> {
     /// All parsed SREC records.
     record: Vec<record::Record>,
     /// Memory layout: (start address, region size) for each region.
-    data_memory_layout: Vec<(Address, usize)>,
+    memory_layout: Vec<(Address, usize)>,
     /// Concatenated data bytes from all S1/S2/S3 records.
     data: Vec<u8>,
     /// Total data length in bytes.
@@ -41,8 +41,21 @@ impl<const MAX: u32> SRecord<MAX> {
     }
 
     /// Returns the memory layout as a slice of (Address, size) tuples.
-    pub fn get_data_memory_layout(&self) -> &[(Address, usize)] {
-        &self.data_memory_layout
+    pub fn get_memory_layout(&self) -> &[(Address, usize)] {
+        &self.memory_layout
+    }
+
+    /// Returns the data layout as a vector of (Address, &[u8]) tuples.
+    pub fn get_data_layout(&self) -> Vec<(Address, &[u8])> {
+        let mut offset = 0;
+        self.memory_layout
+            .iter()
+            .map(|(addr, size)| {
+                let data_slice = &self.data[offset..offset + size];
+                offset += size;
+                (addr.clone(), data_slice)
+            })
+            .collect()
     }
 
     /// Returns a slice of all concatenated data bytes.
@@ -133,7 +146,7 @@ impl<const MAX: u32> SRecord<MAX> {
 
         Ok(Self {
             record: records,
-            data_memory_layout: final_regions,
+            memory_layout: final_regions,
             data,
             data_length,
         })
@@ -156,7 +169,7 @@ mod tests {
 
         // Check that data_memory_layout is not empty and contains reasonable regions
         assert!(
-            !srec.data_memory_layout.is_empty(),
+            !srec.memory_layout.is_empty(),
             "No memory layout regions found"
         );
 
@@ -164,7 +177,7 @@ mod tests {
         assert_eq!(srec.data.len(), srec.data_length);
 
         // Optionally, print for debug
-        for (addr, size) in &srec.data_memory_layout {
+        for (addr, size) in &srec.memory_layout {
             println!("Region: {:?}, size: {:#X}", addr, size);
         }
     }
