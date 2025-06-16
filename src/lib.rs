@@ -68,6 +68,49 @@ impl<const MAX: u32> SRecord<MAX> {
         self.data_length
     }
 
+    /// Returns a full binary image from the lowest to highest address, padding 0x00 for unknown data.
+    pub fn to_full_binary(&self) -> Vec<u8> {
+        // Find the lowest and highest address
+        let min_addr = self
+            .memory_layout
+            .iter()
+            .map(|(addr, _)| match addr {
+                Address::Address16(a) => *a as u32,
+                Address::Address24(a) => *a,
+                Address::Address32(a) => *a,
+            })
+            .min()
+            .unwrap();
+
+        let max_addr = self
+            .memory_layout
+            .iter()
+            .map(|(addr, size)| match addr {
+                Address::Address16(a) => *a as u32 + *size as u32,
+                Address::Address24(a) => *a + *size as u32,
+                Address::Address32(a) => *a + *size as u32,
+            })
+            .max()
+            .unwrap();
+
+        let mut image = vec![0x00; (max_addr - min_addr) as usize];
+
+        // Fill in known data
+        let mut offset = 0;
+        for (addr, size) in &self.memory_layout {
+            let start = match addr {
+                Address::Address16(a) => *a as u32,
+                Address::Address24(a) => *a,
+                Address::Address32(a) => *a,
+            } - min_addr;
+            let end = start + *size as u32;
+            image[start as usize..end as usize].copy_from_slice(&self.data[offset..offset + size]);
+            offset += size;
+        }
+
+        image
+    }
+
     /// Parse an SREC file and build the memory layout and data.
     ///
     /// - Merges adjacent/overlapping regions up to MAX bytes per region.
